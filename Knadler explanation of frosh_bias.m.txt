@@ -1,0 +1,31 @@
+The program frosh_bias.m runs just like FROSH but with a few additional terms for the biases. Needs to be in the same folder as frosh.m and THERM.dat. 
+frosh_for_sens.m is a sub-function in frosh_bias.m that changes the NASA coefficients by 0.5% to get their contribution. 
+It should be in the same folder as all the other files. P1 bias is 0.12% reading. T1 bias is 0.15K. 
+Uis bias is calculated using a linear fit to the C/T data with the code snippet below...
+
+%Load Counter/Timer Data
+date =20221031
+run_no = 003;
+file_base = 'C:\Users\mitchell.hageman\Desktop\Shock Tube\Data\2022\10 - October\20221031\';
+CT_file = strcat(file_base,num2str(date),'_',num2str(run_no,'%03d'),'_','TimerData.csv');
+CT_data_full = readmatrix(CT_file,'NumHeaderLines',1);
+CT_data = CT_data_full(:,end);
+
+DM1_DM2=12.00*0.0254;% [m] Dead-mass ports center-to-center spacing (measured. See Table9 (P.34) Ref.1)
+DM2_DM3=11.993*0.0254;% [m] Dead-mass ports center-to-center spacing (measured. See Table9 (P.34) Ref.1)
+DM3_DM4=11.996*0.0254;% [m] Dead-mass ports center-to-center spacing (measured. See Table9 (P.34) Ref.1)
+DM4_DM5=11.994*0.0254;% [m] Counter0 spacing (PCB 1-2) Dead-mass ports center-to-center spacing (measured. See Table9 (P.34) Ref.1)
+DM5_DM6=11.991*0.0254;% [m] Counter1 spacing (PCB 2-3) Dead-mass ports center-to-center spacing (measured. See Table9 (P.34) Ref.1)
+DM6_DM7=11.992*0.0254;% [m] Counter2 spacing (PCB 3-4) Dead-mass ports center-to-center spacing (measured. See Table9 (P.34) Ref.1)
+
+%Extract Counter/Timer data and calculate incident shock velocity and its uncertainty
+U_CT0 = DM3_DM4/CT_data(1);
+U_CT1 = DM4_DM5/CT_data(2);
+U_CT2 = DM5_DM6/CT_data(3);
+U_CT3 = DM6_DM7/CT_data(4);
+U_fit = fit([EndwalltoMidpoint_DM3_DM4 EndwalltoMidpoint_DM4_DM5 EndwalltoMidpoint_DM5_DM6 EndwalltoMidpoint_DM6_DM7]',[U_CT0 U_CT1 U_CT2 U_CT3]','poly1');
+Uis = U_fit.p2
+Uis_CI = confint(U_fit)
+Uis_bias = (Uis_CI(2,2)-Uis_CI(1,2))/2
+
+The dead mass distances came from a code you sent me back when we first started running the tube, but if you can't find them I'll send them along as well.
