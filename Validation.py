@@ -1,9 +1,9 @@
 # ****************************************************************************
-# Name       : optical_models.py
+# Name       : Validation.py
 # Author     : Andres Valdez
 # Version    : 1.0
-# Description: Several mathematical models for bio screen analysis
-# Data	     : 10-11-2021
+# Description: Validation of the filtering routines defined in utils.py
+# Data	     : 01-21-2024
 # ****************************************************************************
 
 from __future__ import unicode_literals
@@ -73,20 +73,21 @@ if __name__ == "__main__":
         dp_savgol =  savitzky_golay(dp_val, 50, 2)
         dp_butter = butter_lowpass_filter(dp_savgol,2,300,2)
     
-        # Now I have tow stagered filters, but will improve merging them
+        # Now I have two staggered filters, but will improve merging them
         test      = np.sqrt(np.abs(dp_butter*dp_savgol))
     
         #period = int(0.5*t_data[-1] / (t_data[2]-t_data[1]))
         #results = seasonal_decompose(dp_val, model='additive', period=period)
         #test = results.trend
+        
+        # Now show the shock locations
+        idx = get_shocklocs(t_data,test)
 
         fig , axs = plt.subplots(1,1,figsize=(12,10),constrained_layout=True)
     
         axs.plot(t_data,dp_val,'-',lw=2,color=colors[0],label=labels[0])
-        #axs[0].plot(t_data,dp_butter,'-',lw=2,color=colors[1],label=labels[1])
-        #axs[0].plot(t_data,dp_savgol,'-',lw=2,color=colors[2],label=labels[2])
-
-        axs.plot(t_data,test,'-',lw=2,color=colors[1],label='test')
+        axs.plot(t_data,test,'-',lw=2,color=colors[1],label='Filtered')
+        axs.plot(t_data[idx], test[idx], 'o', color=colors[2], label='potential shocks')
 
 
         axs.set_xlim([init[k],end[k]])
