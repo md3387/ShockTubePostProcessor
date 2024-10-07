@@ -1,9 +1,9 @@
-function[Kistler_Voltage, pressureLP, t_ignPIndex, IDT_P, IDT_P_bias, StartIncidentShockSearch, StopReflectedShockSearch, comments]=MlappPressureTrace(Reacting, Pretrigger,Pout, timetoendwall, timefromendwall, dark_columns,time, Kistler_Voltage,KistlerSpecs,Uis,BifurcationHeight,OscopeSampleFrequency,comments)
+function[PlotData, t_ignPIndex, IDT_P, IDT_P_bias]=MlappPressureTrace(Reacting, Pretrigger, timetoendwall, timefromendwall, dark_columns,time, Kistler_Voltage,KistlerSpecs,Uis,OscopeSampleFrequency)
 
 %Pretrigger=str2double(UserInput{11}); %[ms]
 PretriggerIndex=(Pretrigger/1000)*(OscopeSampleFrequency);
 pressurenoise=dark_columns(:,1);
-Pressure_atm=Kistler_Voltage.*(KistlerSpecs(3)/14.7);% [atm]... %KistlerSpecs(3) = psi/volt
+Pressure_atm_raw=Kistler_Voltage.*(KistlerSpecs(3)/14.7);% [atm]... %KistlerSpecs(3) = psi/volt                       
 disp('Temperature for CO2 absorbance calculations based on constant volume assumption. I **Think** it should be adiabatic, where PV^n (n=gamma) is constant, not volume..')
 PXD_ShockPass_Frequency=Uis/KistlerSpecs(2); %KistlerSpecs(2) = PXD diameter[m]
 PXD_fft_Frequency=55000; %Prove to yourself this is a common noise frequency by uncommenting the next two lines of code.
@@ -16,15 +16,16 @@ BWorder = 2; % Order of the Butterworth filter
 pressureBW = filtfilt(b, a, pressureSG);% Apply filter using filtfilt to achieve zero-phase filtering
 PressureMerge = sqrt(abs(pressureBW .* pressureSG));
 pressureLP = PressureMerge;% lowpass(Kistler_Voltage,PXD_LP_Frequency,OscopeSampleFrequency); %y = lowpass(x,fpass,fs)
+Pressure_atm=pressureLP*KistlerSpecs(3)*0.068046;
 dPdt=gradient(pressureLP,time);% point-by-point derivative of absorbCO2
-dPdtSG= sgolayfilt(dPdt,2,51);
-dPdtBW = filtfilt(b, a, dPdtSG);
-dpdtMerge =sqrt(abs(dPdtBW .* dPdtSG));
-dpdt=dPdtSG;
+%dPdtSG= sgolayfilt(dPdt,2,51);
+%dPdtBW = filtfilt(b, a, dPdtSG);
+%dpdtMerge =sqrt(abs(dPdtBW .* dPdtSG));
+%dpdt=dPdtSG;
 PressureWindowCenter=int64(PretriggerIndex); %[index]center of "findpeaks" window.
 ReflectedToIncidentBackwardsIndex=int64((timetoendwall+timefromendwall)*(OscopeSampleFrequency));
-StartIncidentShockSearch=int64(PressureWindowCenter-(ReflectedToIncidentBackwardsIndex*2));
-StopReflectedShockSearch=int64(PressureWindowCenter+3000);%Change 3000 to some a shock-specific number.
+%StartIncidentShockSearch=int64(PressureWindowCenter-(ReflectedToIncidentBackwardsIndex*2));
+%StopReflectedShockSearch=int64(PressureWindowCenter+3000);%Change 3000 to some a shock-specific number.
 %{
 %Find incident and reflected shock peaks
 %[Ppks,Plocs,Pw,Pp] = findpeaks(dPdt(StartIncidentShockSearch:StopReflectedShockSearch),'MinPeakHeight',0.3*max(dPdt));%,'Npeaks',2,'MinPeakDistance',length(StartIncidentShockSearch:StopReflectedShockSearch)/2); %pks=peaks, locs=locations, w=width, p=prominence, 'MinPeakHeight' means ignore all peaks below 1500.
@@ -53,9 +54,18 @@ else %Non-reacting (Absorbing) tests
     %State5end=Rarefaction_index(1);  %Rarefaction identification still not working right
     PState5end=PState5start+int64(((timetoendwall+timefromendwall)*OscopeSampleFrequency)*4);
     disp('State 5 start + State2 Lengthx4 used to determine Kistler State 5 end.  Still need to switch to using Rarefaction wave arrival')
-    %comments=strcat(comments,'Kistler-determined States unreliable with V1 code ');
    t_ignPIndex='NA';t_SW_P='NA'; IDT_P='NA';IDT_P_bias='NA';
 end
+
+PlotData=[time, Pressure_atm, Pressure_atm_raw, pressureLP];
+figure
+plot(time,Pressure_atm,'DisplayName',"Pressure [atm]")
+hold on
+plot(time,Pressure_atm_raw,'DisplayName',"Pressure raw [atm]")
+plot(time,pressureLP,'DisplayName',"LP Pressure [atm]")
+legend
+ylabel="Pressure [atm]";
+xlabel('time [ms]')
 
 %{
 figureIndex=figureIndex+1;
